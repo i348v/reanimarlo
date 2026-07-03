@@ -2,6 +2,7 @@ import atexit
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -19,6 +20,17 @@ from flask import Flask, jsonify, request, send_from_directory, abort
 ARLO_API = os.environ.get("REANIMARLO_API_URL", "http://127.0.0.1:5000")
 AP_INTERFACE = os.environ.get("REANIMARLO_AP_INTERFACE", "wlan1")
 AP_GATEWAY_IP = os.environ.get("REANIMARLO_AP_GATEWAY_IP", "172.14.0.1")
+
+# iw/ip usually live in /sbin or /usr/sbin, which isn't always on a normal
+# (non-root) user's PATH - resolved once at startup, searching those
+# directories explicitly rather than trusting this process's own inherited
+# PATH, since that's exactly what's missing them when this runs via
+# su/cron/a service manager instead of an interactive terminal (where it
+# would otherwise silently fail, caught by a broad except and misread as
+# "no data available" rather than "command not found").
+_bin_search_path = "/sbin:/usr/sbin:/bin:/usr/bin:" + os.environ.get("PATH", "")
+IW_BIN = shutil.which("iw", path=_bin_search_path) or "iw"
+IP_BIN = shutil.which("ip", path=_bin_search_path) or "ip"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HLS_DIR = os.path.join(BASE_DIR, "hls")
@@ -395,7 +407,7 @@ def _ap_signal_by_mac():
     """dBm signal for each currently-associated station, keyed by MAC."""
     try:
         out = subprocess.run(
-            ["iw", "dev", AP_INTERFACE, "station", "dump"],
+            [IW_BIN, "dev", AP_INTERFACE, "station", "dump"],
             capture_output=True, text=True, check=False, timeout=5,
         ).stdout
     except Exception:
@@ -417,7 +429,7 @@ def _ap_signal_by_mac():
 def _ap_ip_to_mac():
     try:
         out = subprocess.run(
-            ["ip", "neigh", "show", "dev", AP_INTERFACE],
+            [IP_BIN, "neigh", "show", "dev", AP_INTERFACE],
             capture_output=True, text=True, check=False, timeout=5,
         ).stdout
     except Exception:
