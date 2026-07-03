@@ -110,6 +110,21 @@ main { padding: 20px; max-width: 1400px; margin: 0 auto; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .dot.live { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 
+.cam-fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.6);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+.cam-fullscreen-btn:hover { background: rgba(0,0,0,0.8); }
+
 .cam-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 
 .cam-name-row {

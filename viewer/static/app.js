@@ -187,6 +187,20 @@ function renderCameraCard(cam) {
   badge.innerHTML = `<span class="dot ${cam.streaming ? "live" : ""}"></span>${cam.streaming ? "LIVE" : "IDLE"}`;
   wrap.appendChild(badge);
 
+  const fullscreenBtn = document.createElement("button");
+  fullscreenBtn.className = "cam-fullscreen-btn";
+  fullscreenBtn.title = "Fullscreen";
+  fullscreenBtn.textContent = "⛶";
+  fullscreenBtn.onclick = () => {
+    // Looked up at click time, not captured at render time - the actual
+    // <video> element gets replaced whenever the stream (re)starts, so a
+    // stale reference here would silently fullscreen a detached element.
+    const video = wrap.querySelector("video");
+    if (!video) return;
+    (video.requestFullscreen || video.webkitRequestFullscreen)?.call(video);
+  };
+  wrap.appendChild(fullscreenBtn);
+
   const body = document.createElement("div");
   body.className = "cam-body";
 
