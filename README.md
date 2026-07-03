@@ -102,6 +102,13 @@ This cost us a couple of hours the first time - the AP looked perfectly
 healthy (WPS handshake succeeded, WPA2 completed) but the camera's DHCP
 broadcast just silently vanished before it ever reached dnsmasq.
 
+**If a specific camera reliably reaches `WPS-SUCCESS` in `hostapd.log` but
+never reconnects afterward**, no matter how many times you retry: this is
+a real, fixed, known issue with a one-line patch -
+[`network-setup/hostapd-patches/`](network-setup/hostapd-patches/) has
+the full writeup and build instructions. `start_ap.sh` automatically uses
+the patched build if you've built it. Most cameras don't need this.
+
 ### 2. Set up arlo-cam-api
 
 ```bash

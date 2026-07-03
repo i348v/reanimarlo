@@ -7,6 +7,12 @@ IFACE=wlan1
 GATEWAY_IP=172.14.0.1
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Custom-built hostapd with the WPS post-failure disconnect delay patch
+# (see hostapd-patches/) - needed for at least one camera model that
+# never completes pairing against stock hostapd. Falls back to the
+# system hostapd if you haven't built the patched version.
+HOSTAPD_BIN="$DIR/hostapd-src/hostapd-2.10/hostapd/hostapd"
+[ -x "$HOSTAPD_BIN" ] || HOSTAPD_BIN="hostapd"
 
 if [ "$EUID" -ne 0 ]; then
   echo "Run with sudo: sudo bash start_ap.sh"
@@ -38,9 +44,9 @@ ip addr flush dev $IFACE
 ip link set $IFACE up
 ip addr add $GATEWAY_IP/24 dev $IFACE
 
-echo "Starting hostapd..."
+echo "Starting hostapd ($HOSTAPD_BIN)..."
 rm -f "$DIR/hostapd.log"
-hostapd -B -f "$DIR/hostapd.log" "$DIR/hostapd.conf"
+"$HOSTAPD_BIN" -B -f "$DIR/hostapd.log" "$DIR/hostapd.conf"
 sleep 1
 chmod 666 "$DIR/hostapd.log" 2>/dev/null || true
 

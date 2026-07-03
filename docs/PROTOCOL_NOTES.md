@@ -44,6 +44,63 @@ gets forcibly deauthenticated, requiring a full WPA2 reassociation - and if
 that's flaky, sometimes a full WPS re-pairing dance. Set
 `ap_max_inactivity=3600` in `hostapd.conf`.
 
+## Some cameras never reconnect after WPS - and it's a fixable hostapd timing issue
+
+Some cameras (confirmed on one specific `VMC4030P` unit, out of several
+tested) will complete a WPS-PBC pairing cleanly - `WPS-SUCCESS` in
+hostapd's log, full M1-M8 message exchange visible in packet capture -
+and then simply never come back. Every retry produces the identical
+signature: `WPS-SUCCESS`, then `CTRL-EVENT-EAP-FAILURE`, then
+`IEEE 802.1X: authentication failed - EAP type: 0 (unknown)`, then a
+deauth, then silence. Factory-resetting the camera, moving it next to
+the adapter, and even eliminating a mixed TKIP/CCMP cipher suite all had
+no effect - the failure was completely consistent across dozens of
+attempts.
+
+**The EAP-Failure itself is not a bug.** It's WPS working as designed:
+hostapd's own source (`src/eap_server/eap_server_wsc.c`) reports the
+successful completion of WPS as an EAP method failure on purpose -
+```
+case WPS_DONE:
+    wpa_printf(MSG_DEBUG, "EAP-WSC: WPS processing completed "
+               "successfully - report EAP failure");
+```
+The idea is that WPS's only job is delivering a WPA2-PSK credential; the
+*real* authentication is a separate, later reconnection using that
+credential, and the WPS session itself is expected to end in "failure"
+regardless of outcome.
+
+**The actual cause: a 10ms window is too tight for this camera.**
+`ap_sta_delayed_1x_auth_fail_disconnect()` in `src/ap/sta_info.c` force-
+deauthenticates the station just **10 milliseconds** after that
+EAP-Failure, reasoning (per hostapd's own comment) that "many devices
+require deauthentication after WPS provisioning and some may not be able
+to do that themselves." Packet capture against a genuine Arlo/Netgear
+base station shows this specific camera doesn't need that forced kick at
+all - it gracefully self-disconnects (`Disassociation: ... sending STA is
+leaving`) roughly **one second** after WPS completes, on its own
+initiative, then reconnects cleanly on its own schedule. Getting
+force-deauthenticated by hostapd 10ms after the EAP-Failure - while the
+camera is presumably still in the middle of its own internal teardown -
+appears to corrupt its state badly enough that it never attempts to
+reconnect at all.
+
+**The fix**: a one-line patch stretching that delay from 10ms to 1.5s
+(`network-setup/hostapd-patches/hostapd-2.10-wps-deauth-delay.patch`).
+Verified end-to-end against the actual affected camera: factory-reset it,
+paired fresh against the patched build, and it completed the full cycle
+- WPS success, standard EAP-Failure, graceful self-disconnect, clean
+reconnect, full WPA2 4-way handshake, registered with `arlo-cam-api` and
+responding to status queries. The same camera failed 100% of attempts
+(dozens, across several hours) against stock hostapd.
+
+This is a narrow, low-risk change - it only affects the delay before
+kicking a station whose EAP session already ended (success or failure),
+not any authentication or security logic. See
+`network-setup/hostapd-patches/README.md` for build instructions. You
+likely only need this if a specific camera reliably reaches `WPS-SUCCESS`
+in your log but never reconnects afterward - most cameras don't need it.
+
 ## The RTSP session dies over neglected tracks - or maybe just because
 
 Pulling video via `ffmpeg` (or a from-scratch RTSP client), the `DESCRIBE`

@@ -1,0 +1,32 @@
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -1516,15 +1516,24 @@
+ {
+ 	wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
+ 		"IEEE 802.1X: Force disconnection of " MACSTR
+-		" after EAP-Failure in 10 ms", MAC2STR(sta->addr));
++		" after EAP-Failure in 1500 ms", MAC2STR(sta->addr));
+ 
+ 	/*
+-	 * Add a small sleep to increase likelihood of previously requested
+-	 * EAP-Failure TX getting out before this should the driver reorder
+-	 * operations.
++	 * REANIMARLO: stock hostapd force-disconnects 10ms after the
++	 * WPS-mandated EAP-Failure, reasoning that "many devices require
++	 * deauthentication after WPS provisioning and some may not be able
++	 * to do that themselves". Packet capture against a genuine Arlo/
++	 * Netgear base station shows at least one camera model gracefully
++	 * self-disconnects roughly 1s after its own WPS completion, then
++	 * reconnects on its own schedule - it's exactly the kind of device
++	 * this delay's own comment says doesn't need the forced kick, and
++	 * getting force-deauthenticated mid-teardown (10ms leaves virtually
++	 * no window) appears to corrupt its internal state so it never
++	 * retries. Stretched to 1.5s to give that self-teardown a chance to
++	 * happen first - see docs/PROTOCOL_NOTES.md for the full writeup.
+ 	 */
+ 	eloop_cancel_timeout(ap_sta_delayed_1x_auth_fail_cb, hapd, sta);
+-	eloop_register_timeout(0, 10000, ap_sta_delayed_1x_auth_fail_cb,
++	eloop_register_timeout(1, 500000, ap_sta_delayed_1x_auth_fail_cb,
+ 			       hapd, sta);
+ }
+ 
