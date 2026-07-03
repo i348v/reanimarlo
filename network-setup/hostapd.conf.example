@@ -13,7 +13,9 @@ auth_algs=1
 wpa=2
 wpa_passphrase=CHANGE_ME_TO_A_STRONG_PASSPHRASE
 wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
+# CCMP only - no reason to also advertise the legacy TKIP cipher, and a
+# mixed cipher suite is one less variable if a camera is picky about the
+# post-WPS handshake (see docs/PROTOCOL_NOTES.md).
 rsn_pairwise=CCMP
 eap_server=1
 config_methods=label display push_button keypad
