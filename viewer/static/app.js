@@ -83,15 +83,15 @@ function detachHls(serial) {
   }
 }
 
-function setReconnectBadge(wrapEl, show) {
+function setReconnectBadge(wrapEl, show, text = "Reconnecting…") {
   let badge = wrapEl.querySelector(".reconnect-badge");
   if (show) {
     if (!badge) {
       badge = document.createElement("div");
       badge.className = "reconnect-badge";
-      badge.textContent = "Reconnecting…";
       wrapEl.appendChild(badge);
     }
+    badge.textContent = text;
   } else if (badge) {
     badge.remove();
   }
@@ -158,6 +158,15 @@ async function maybeReconnect(cam, wrapEl) {
   if (!activeWatches.has(cam.serial_number)) return;
   if (cam.streaming) return;
   if (reconnecting.has(cam.serial_number)) return;
+  if (cam.recording) {
+    // A motion recording just preempted (or is holding) this camera's
+    // single RTSP slot - recording wins, per the priority set early on
+    // for this whole project. Don't fight it by reconnecting right back;
+    // just wait it out and show why, instead of looking silently broken.
+    setReconnectBadge(wrapEl, true, "Recording in progress…");
+    return;
+  }
+  setReconnectBadge(wrapEl, false);
   reconnecting.add(cam.serial_number);
   try {
     await startStream(cam, wrapEl, { isReconnect: true });

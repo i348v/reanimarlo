@@ -65,12 +65,28 @@ def release_rtsp_lock(path):
         os.remove(path)
     except FileNotFoundError:
         pass
+
+
+def _recording_flag_path(camera_ip):
+    return os.path.join(RTSP_LOCK_DIR, camera_ip.replace(".", "_") + ".recording")
+
+
+def request_preempt(camera_ip):
+    # Recording matters more than live view (the camera can only serve one
+    # RTSP client at a time, and there's never a rush to watch live). If the
+    # lock is held, leave a request for whoever's holding it - the viewer's
+    # stream_watchdog checks for this and voluntarily stops the live view
+    # stream, releasing the lock within one of its poll cycles.
+    try:
+        open(os.path.join(RTSP_LOCK_DIR, camera_ip.replace(".", "_") + ".preempt"), "w").close()
+    except OSError:
+        pass
 ```
 
 Use the *same* `REANIMARLO_RTSP_LOCK_DIR` value (or matching default) as
 `viewer/app.py` so both processes agree on where the lock files live -
 that's what actually enforces the "one RTSP consumer at a time" rule
-across both programs.
+across both programs, and where the preempt/recording flags above live.
 
 ## 3. Heartbeat thread
 
@@ -141,6 +157,7 @@ if alert_type == "pirMotionAlert" and RECORD_ON_MOTION_ALERT:
        for _ in range(5):
            lock_path = acquire_rtsp_lock(cam.ip)
            if lock_path is None:
+               request_preempt(cam.ip)
                time.sleep(2.0)
                continue
            try:
@@ -186,6 +203,14 @@ if alert_type == "pirMotionAlert" and RECORD_ON_MOTION_ALERT:
                s_print(f"Motion recording: already recording {cam.ip}, skipping overlapping alert")
                return
            recording_in_progress.add(cam.ip)
+           # File-based, not just the in-memory set, so the viewer process
+           # (separate PID) can see it too and hold off on auto-reconnecting
+           # live view while this runs - otherwise it would just re-acquire
+           # the lock right back and defeat the preemption above.
+           try:
+               open(_recording_flag_path(cam.ip), "w").close()
+           except OSError:
+               pass
        parts = []
        start_time = time.time()
        try:
@@ -224,6 +249,10 @@ if alert_type == "pirMotionAlert" and RECORD_ON_MOTION_ALERT:
            motion_active.pop(cam.ip, None)
            with recorder_lock:
                recording_in_progress.discard(cam.ip)
+           try:
+               os.remove(_recording_flag_path(cam.ip))
+           except FileNotFoundError:
+               pass
    threading.Thread(target=_wake_and_record, daemon=True).start()
 ```
 

@@ -107,6 +107,29 @@ wake-then-connect sequence rather than just retrying the connect - a
 handful of attempts, each preceded by a fresh wake call, is reliable in
 practice.
 
+## Recording always wins over live view
+
+Since the camera can only serve one RTSP client at a time (see above), live
+view and motion recording are in direct competition for the same resource.
+Given the two, **recording is the one that actually matters** - there's
+rarely urgency around watching live, but a missed motion recording is gone
+for good. So the two sides of the lock aren't symmetric:
+
+- If a motion alert can't get the RTSP lock because live view is holding
+  it, it doesn't just wait - it leaves a preempt request. The viewer's
+  `stream_watchdog` checks for this every ~5s and voluntarily stops the
+  live stream, releasing the lock.
+- While a recording is actually in progress, the viewer also holds off on
+  auto-reconnecting live view for that camera (surfaced in the dashboard as
+  "Recording in progress…") rather than immediately reconnecting and
+  taking the lock right back, which would just re-trigger the same
+  contention in a loop.
+
+Both signals are plain marker files in the shared lock directory
+(`<ip>.preempt` and `<ip>.recording`) rather than anything requiring the
+two processes to talk to each other directly - consistent with how the
+RTSP lock itself works.
+
 ## Firewall note if you're testing DHCP with `ufw`
 
 Not camera-specific, but cost real time: `ufw`'s default rules explicitly

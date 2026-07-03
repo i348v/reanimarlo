@@ -349,6 +349,22 @@ def acquire_rtsp_lock(camera_ip):
     return None
 
 
+def _consume_preempt_flag(camera_ip):
+    """True (and clears the flag) if a motion recording is waiting on this
+    camera's RTSP lock. Recording matters more than live view - the camera
+    can only serve one RTSP client at a time, and there's never a rush to
+    watch live - so live view yields rather than making the recorder retry
+    indefinitely against a lock we're just sitting on."""
+    path = os.path.join(RTSP_LOCK_DIR, camera_ip.replace(".", "_") + ".preempt")
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        return True
+    return False
+
+
 def release_rtsp_lock(path):
     try:
         os.remove(path)
@@ -431,6 +447,10 @@ def api_cameras():
 
             mac = ip_to_mac.get(cam.get("ip"))
             cam["signal_dbm"] = signal_by_mac.get(mac) if mac else None
+
+            cam["recording"] = bool(cam.get("ip")) and os.path.exists(
+                os.path.join(RTSP_LOCK_DIR, cam["ip"].replace(".", "_") + ".recording")
+            )
 
             cam["battery_pct"] = None
             cam["signal_indicator"] = None
@@ -641,11 +661,18 @@ def stream_watchdog():
     TEARDOWN) can leave ffmpeg alive but stuck producing no new segments
     forever. Detect and kill any stream whose manifest hasn't updated
     recently so the lock is freed and the user can retry instead of it
-    silently hanging."""
+    silently hanging.
+
+    Also checks for motion-recording preempt requests: recording is the
+    priority (see docs/PROTOCOL_NOTES.md), so a live view that's holding a
+    camera's RTSP lock while a motion event needs it gets stopped here
+    within one poll cycle rather than starving the recording indefinitely.
+    """
     while True:
         time.sleep(5)
         with streams_lock:
             stale = []
+            ip_by_serial = {}
             for serial, proc in list(streams.items()):
                 if proc.poll() is not None:
                     stale.append(serial)
@@ -654,8 +681,20 @@ def stream_watchdog():
                 try:
                     if time.time() - os.stat(manifest).st_mtime > 12:
                         stale.append(serial)
+                        continue
                 except FileNotFoundError:
                     pass
+                ip_by_serial[serial] = None
+            if ip_by_serial:
+                try:
+                    for cam in get_cameras():
+                        if cam["serial_number"] in ip_by_serial:
+                            ip_by_serial[cam["serial_number"]] = cam.get("ip")
+                except requests.RequestException:
+                    pass
+                for serial, ip in ip_by_serial.items():
+                    if ip and _consume_preempt_flag(ip):
+                        stale.append(serial)
             for serial in stale:
                 _stop_stream_locked(serial)
 
