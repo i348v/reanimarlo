@@ -43,6 +43,12 @@ copy any of its code** — you clone it yourself as a separate dependency, and
 `docs/ARLO_CAM_API_PATCH.md` documents the additions this project needs on
 top of it (as new code to add, not a diff of their file).
 
+Also worth knowing about: [`brianschrameck/arlo-cam-api`](https://github.com/brianschrameck/arlo-cam-api)
+is a fork of the same project with broader device support (including
+video doorbells) and more active maintenance - may be a better starting
+point depending on your hardware. Either should work with the patch
+instructions here, since both expose the same core protocol.
+
 ## Hardware you'll need
 
 - A camera from a generation that's actually been discontinued/unsupported
