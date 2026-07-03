@@ -47,6 +47,18 @@ your systemd unit) at this binary's full path instead of the system one.
 grep "1500 ms" src/ap/sta_info.c
 ```
 
+## Known quirk: `-f logfile` produces no file when combined with `-B`
+
+The system-packaged hostapd handles `-B -f hostapd.log` (background +
+log to file) fine; this from-source build doesn't - the log file never
+gets created, though the daemon itself runs completely normally (`iw dev
+<iface> station dump` and `hostapd_cli` both work as expected). This
+looks like a build-configuration difference from the Debian package
+rather than anything related to the patch itself. If you need live logs
+for troubleshooting, run it in the foreground with shell redirection
+instead: `sudo ./hostapd -f hostapd.log path/to/hostapd.conf` (no `-B`),
+or `sudo ./hostapd path/to/hostapd.conf 2>&1 | tee hostapd.log`.
+
 Should print the patched log line. If you're troubleshooting and want to
 confirm which binary is actually running: `ps aux | grep hostapd` shows
 the full path it was launched from.
