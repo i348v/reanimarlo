@@ -1,0 +1,29 @@
+# Copy this to hostapd.conf and fill in the placeholders below.
+# Generate a passphrase with: openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 16
+
+interface=wlan1
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=YOUR_USERNAME
+ssid=YOUR_NETWORK_NAME
+country_code=US
+hw_mode=g
+channel=1
+macaddr_acl=0
+auth_algs=1
+wpa=2
+wpa_passphrase=CHANGE_ME_TO_A_STRONG_PASSPHRASE
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+eap_server=1
+config_methods=label display push_button keypad
+wps_state=2
+ap_setup_locked=1
+ieee80211n=1
+wps_pin_requests=/var/run/hostapd.pin-req
+ignore_broadcast_ssid=0
+# hostapd's default 300s inactivity timeout kicks battery-powered cameras
+# off during their normal sleep cycles, forcing a full reconnect handshake
+# every time. Give them a much longer leash - server.py's heartbeat thread
+# already keeps genuinely-alive cameras from ever going this quiet.
+ap_max_inactivity=3600

@@ -1,0 +1,31 @@
+# Real configs with your actual WiFi passphrase/username - never commit these
+network-setup/hostapd.conf
+network-setup/dnsmasq-wlan1.conf
+
+# Runtime state / logs - all specific to a real deployment
+network-setup/*.log
+network-setup/*.pid
+viewer/hls/
+viewer/snapshots/
+viewer/faces/
+viewer/faces.json
+viewer/rtsp_locks/
+viewer/recordings/
+*.db
+*.db-journal
+
+# Actual camera footage should never end up in version control
+recordings/
+*.mp4
+*.mpg
+*.ts
+!viewer/static/*.js
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# OS/editor cruft
+.DS_Store
+*.swp

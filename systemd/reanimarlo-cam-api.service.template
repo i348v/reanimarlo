@@ -1,0 +1,16 @@
+[Unit]
+Description=arlo-cam-api camera control server (Reanimarlo dependency)
+After=reanimarlo-dnsmasq.service
+Requires=reanimarlo-dnsmasq.service
+
+[Service]
+Type=simple
+User=__USERNAME__
+WorkingDirectory=__ARLO_CAM_API_DIR__
+ExecStart=__ARLO_CAM_API_DIR__/venv/bin/python3 server.py
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

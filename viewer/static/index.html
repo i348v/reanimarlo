@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reanimarlo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>Reanimarlo</h1>
+  <nav>
+    <button class="tab-btn active" data-tab="live">Live</button>
+    <button class="tab-btn" data-tab="recordings">Recordings</button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-live" class="tab active">
+    <div id="camera-grid" class="grid"></div>
+  </section>
+
+  <section id="tab-recordings" class="tab">
+    <div id="camera-tabs" class="camera-tabs"></div>
+    <div id="recordings-controls">
+      <select id="date-filter" class="date-filter"></select>
+      <select id="label-filter" class="date-filter"></select>
+    </div>
+    <div id="recordings-list" class="recordings-gallery"></div>
+  </section>
+</main>
+
+<div id="player-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="player-close" class="modal-close">&times;</button>
+    <video id="player-video" controls autoplay></video>
+  </div>
+</div>
+
+<script src="/static/hls.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

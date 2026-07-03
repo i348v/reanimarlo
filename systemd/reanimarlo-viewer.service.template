@@ -1,0 +1,19 @@
+[Unit]
+Description=Reanimarlo web dashboard
+After=reanimarlo-cam-api.service
+Requires=reanimarlo-cam-api.service
+
+[Service]
+Type=simple
+User=__USERNAME__
+WorkingDirectory=__INSTALL_DIR__/viewer
+ExecStart=__INSTALL_DIR__/viewer/venv/bin/python3 app.py
+Environment=REANIMARLO_API_URL=http://127.0.0.1:5000
+Environment=REANIMARLO_AP_INTERFACE=__AP_INTERFACE__
+Environment=REANIMARLO_AP_GATEWAY_IP=__AP_GATEWAY_IP__
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

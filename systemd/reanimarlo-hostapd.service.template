@@ -1,0 +1,21 @@
+[Unit]
+Description=Reanimarlo fake base station - hostapd AP
+After=network.target sys-subsystem-net-devices-__AP_INTERFACE__.device
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/nmcli device set __AP_INTERFACE__ managed no
+ExecStartPre=-/usr/bin/ip link set __AP_INTERFACE__ down
+ExecStartPre=-/usr/bin/ip addr flush dev __AP_INTERFACE__
+ExecStartPre=/usr/bin/ip link set __AP_INTERFACE__ up
+ExecStartPre=/usr/bin/ip addr add __AP_GATEWAY_IP__/24 dev __AP_INTERFACE__
+ExecStart=/sbin/hostapd -f __INSTALL_DIR__/network-setup/hostapd.log __INSTALL_DIR__/network-setup/hostapd.conf
+Restart=on-failure
+RestartSec=5
+# The USB adapter can take a few seconds to enumerate after boot - keep
+# retrying rather than giving up.
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

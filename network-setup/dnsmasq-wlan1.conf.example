@@ -1,0 +1,8 @@
+# Copy this to dnsmasq-wlan1.conf. Change the interface name if your
+# WiFi adapter enumerates as something other than wlan1 (check `iw dev`).
+interface=wlan1
+bind-interfaces
+except-interface=lo
+dhcp-range=172.14.0.100,172.14.0.199,255.255.255.0,12h
+domain=arlo
+address=/gateway.arlo/172.14.0.1

@@ -1,0 +1,18 @@
+# Optional: object detection (cat/dog/person/vehicle) and face
+# clustering. This is genuinely CPU-heavy - on a modest machine it can
+# visibly slow the whole system down if it runs on every single
+# recording (ask me how I know). Leave REANIMARLO_AI_DETECTION unset
+# (or "0") unless you know your hardware has headroom to spare, and
+# consider running it "nice"d or only outside active-use hours.
+#
+# Install the CPU-only torch build FIRST and separately, or pip will
+# happily pull several GB of CUDA libraries you don't need on a machine
+# with no NVIDIA GPU:
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements-ai.txt
+#
+ultralytics
+insightface
+onnxruntime
+opencv-python

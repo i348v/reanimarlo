@@ -1,0 +1,14 @@
+[Unit]
+Description=Reanimarlo fake base station - dnsmasq DHCP/DNS
+After=reanimarlo-hostapd.service
+Requires=reanimarlo-hostapd.service
+
+[Service]
+Type=simple
+ExecStart=/sbin/dnsmasq --no-daemon -C __INSTALL_DIR__/network-setup/dnsmasq-wlan1.conf --log-facility=__INSTALL_DIR__/network-setup/dnsmasq.log --log-dhcp
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target
