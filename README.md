@@ -164,6 +164,12 @@ sudo bash install_services.sh
 
 It'll ask where you cloned `arlo-cam-api` and take care of the rest.
 
+**If that fails with "System has not been booted with systemd as init
+system"** - your distro doesn't run systemd (normal on MX Linux, antiX,
+Devuan, and similar). Use
+[`sysvinit-cron/`](sysvinit-cron/) instead, which does the same thing
+with a `@reboot` cron job.
+
 ## Known limitations
 
 **Live view isn't perfectly smooth, and that's not a bug in this project.**

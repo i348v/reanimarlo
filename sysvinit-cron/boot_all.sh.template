@@ -1,0 +1,28 @@
+#!/bin/bash
+# Full startup sequence for cron's @reboot, for systems that don't run
+# systemd as PID 1 (SysVinit-based distros like MX Linux, antiX, Devuan,
+# and others - `systemctl` and the systemd/ unit files in this repo won't
+# work there at all: "System has not been booted with systemd as init
+# system. Can't operate."). Runs as root, via /etc/cron.d.
+
+# USB WiFi adapters can take a few seconds to enumerate after boot;
+# cron's @reboot can fire before that's finished.
+sleep 15
+
+INSTALL_DIR="__INSTALL_DIR__"
+ARLO_CAM_API_DIR="__ARLO_CAM_API_DIR__"
+REAL_USER="__USERNAME__"
+LOG_DIR="$INSTALL_DIR/boot-logs"
+mkdir -p "$LOG_DIR"
+
+bash "$INSTALL_DIR/network-setup/start_ap.sh" >> "$LOG_DIR/start_ap.log" 2>&1
+
+sleep 3
+
+su - "$REAL_USER" -c "cd $ARLO_CAM_API_DIR && ./venv/bin/python3 server.py" \
+  >> "$LOG_DIR/server.log" 2>&1 &
+
+sleep 3
+
+su - "$REAL_USER" -c "cd $INSTALL_DIR/viewer && $INSTALL_DIR/viewer/venv/bin/python3 app.py" \
+  >> "$LOG_DIR/viewer.log" 2>&1 &
