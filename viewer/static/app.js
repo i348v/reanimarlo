@@ -189,15 +189,16 @@ function renderCameraCard(cam) {
 
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.className = "cam-fullscreen-btn";
-  fullscreenBtn.title = "Fullscreen";
+  fullscreenBtn.title = "Open larger view";
   fullscreenBtn.textContent = "⛶";
   fullscreenBtn.onclick = () => {
-    // Looked up at click time, not captured at render time - the actual
-    // <video> element gets replaced whenever the stream (re)starts, so a
-    // stale reference here would silently fullscreen a detached element.
-    const video = wrap.querySelector("video");
-    if (!video) return;
-    (video.requestFullscreen || video.webkitRequestFullscreen)?.call(video);
+    // Route through the same big centered modal already used for
+    // recordings, rather than the browser Fullscreen API - that API can
+    // silently no-op depending on window manager/browser permissions, and
+    // the modal is a known-working, much more reliable way to get a
+    // genuinely larger view.
+    const current = camerasCache.find((c) => c.serial_number === cam.serial_number) || cam;
+    openLiveView(current);
   };
   wrap.appendChild(fullscreenBtn);
 
@@ -322,10 +323,34 @@ function openRecording(url) {
   modal.classList.remove("hidden");
 }
 
+const MODAL_LIVE_KEY = "__modal_live__";
+
+async function openLiveView(cam) {
+  // The camera's already streaming to the grid's small video, so this
+  // just points a second, independent HLS.js player at the same segment
+  // files - it's the server that talks to the camera over RTSP, and it's
+  // already doing that regardless of how many browser-side viewers are
+  // reading the resulting HLS output, so this doesn't add any extra load
+  // on the camera itself.
+  let data;
+  try {
+    data = await api(`/api/cameras/${cam.serial_number}/stream/start`, { method: "POST" });
+  } catch (e) {
+    return;
+  }
+  const content = modalVideo.parentElement;
+  content.querySelectorAll("img").forEach((el) => el.remove());
+  modalVideo.classList.remove("hidden");
+  modalVideo.muted = true;
+  attachHls(modalVideo, data.hls_url, MODAL_LIVE_KEY);
+  modal.classList.remove("hidden");
+}
+
 modalClose.onclick = () => {
   modal.classList.add("hidden");
   modalVideo.pause();
   modalVideo.removeAttribute("src");
+  detachHls(MODAL_LIVE_KEY);
 };
 
 async function loadCameras() {
