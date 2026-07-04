@@ -25,21 +25,29 @@ if [ ! -f "$ARLO_CAM_API_DIR/server.py" ]; then
 fi
 
 BOOT_SCRIPT="$DIR/sysvinit-cron/boot_all.sh"
-sed \
-  -e "s#__INSTALL_DIR__#$DIR#g" \
-  -e "s#__ARLO_CAM_API_DIR__#$ARLO_CAM_API_DIR#g" \
-  -e "s#__USERNAME__#$REAL_USER#g" \
-  "$DIR/sysvinit-cron/boot_all.sh.template" > "$BOOT_SCRIPT"
-chmod +x "$BOOT_SCRIPT"
+WATCHDOG_SCRIPT="$DIR/sysvinit-cron/watchdog.sh"
+for template in boot_all watchdog; do
+  sed \
+    -e "s#__INSTALL_DIR__#$DIR#g" \
+    -e "s#__ARLO_CAM_API_DIR__#$ARLO_CAM_API_DIR#g" \
+    -e "s#__USERNAME__#$REAL_USER#g" \
+    "$DIR/sysvinit-cron/$template.sh.template" > "$DIR/sysvinit-cron/$template.sh"
+  chmod +x "$DIR/sysvinit-cron/$template.sh"
+done
 
-echo "@reboot root $BOOT_SCRIPT" > /etc/cron.d/reanimarlo
+cat > /etc/cron.d/reanimarlo <<EOF
+@reboot root $BOOT_SCRIPT
+*/2 * * * * root $WATCHDOG_SCRIPT
+EOF
 chmod 644 /etc/cron.d/reanimarlo
 
 echo
 echo "Installed: $BOOT_SCRIPT"
+echo "Installed: $WATCHDOG_SCRIPT (runs every 2 minutes, restarts anything"
+echo "that crashed mid-session - @reboot alone only covers actual reboots)"
 echo "Registered: /etc/cron.d/reanimarlo"
 echo
-echo "This runs automatically on your next reboot. To test it right now"
-echo "without rebooting (stop anything you have running manually first):"
-echo "  sudo bash $BOOT_SCRIPT"
-echo "Logs land in $DIR/boot-logs/ once it's run at least once."
+echo "The boot script runs automatically on your next reboot. To test it"
+echo "right now without rebooting (stop anything you have running manually"
+echo "first): sudo bash $BOOT_SCRIPT"
+echo "Logs land in $DIR/boot-logs/ once each has run at least once."

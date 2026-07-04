@@ -1,0 +1,40 @@
+#!/bin/bash
+# Crash-recovery watchdog: cron's @reboot only fires once at boot, so a
+# mid-session crash of any of these four processes would otherwise sit
+# dead until the next actual reboot. Run every couple of minutes via
+# cron to catch and restart whichever one died, in dependency order.
+# Runs as root.
+
+INSTALL_DIR="__INSTALL_DIR__"
+ARLO_CAM_API_DIR="__ARLO_CAM_API_DIR__"
+REAL_USER="__USERNAME__"
+LOG_DIR="$INSTALL_DIR/boot-logs"
+mkdir -p "$LOG_DIR"
+
+log() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_DIR/watchdog.log"
+}
+
+if ! pgrep -x hostapd >/dev/null; then
+  log "hostapd is down - restarting the whole AP stack"
+  bash "$INSTALL_DIR/network-setup/start_ap.sh" >> "$LOG_DIR/start_ap.log" 2>&1
+  sleep 3
+elif ! pgrep -x dnsmasq >/dev/null; then
+  log "dnsmasq is down but hostapd is up - restarting just dnsmasq"
+  dnsmasq -C "$INSTALL_DIR/network-setup/dnsmasq-wlan1.conf" \
+    --log-facility="$INSTALL_DIR/network-setup/dnsmasq.log" --log-dhcp \
+    --pid-file="$INSTALL_DIR/network-setup/dnsmasq.pid"
+fi
+
+if ! pgrep -f "^\./venv/bin/python3 server\.py$" >/dev/null; then
+  log "server.py is down - restarting"
+  su - "$REAL_USER" -c "cd $ARLO_CAM_API_DIR && ./venv/bin/python3 server.py" \
+    >> "$LOG_DIR/server.log" 2>&1 &
+  sleep 2
+fi
+
+if ! pgrep -f "^$INSTALL_DIR/viewer/venv/bin/python3 app\.py$" >/dev/null; then
+  log "app.py (viewer) is down - restarting"
+  su - "$REAL_USER" -c "cd $INSTALL_DIR/viewer && $INSTALL_DIR/viewer/venv/bin/python3 app.py" \
+    >> "$LOG_DIR/viewer.log" 2>&1 &
+fi
